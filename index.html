@@ -6,7 +6,6 @@
 <title>Pipeline de Dados End-to-End — das Fontes ao BI</title>
 <meta name="description" content="Do OLTP ao Databricks Lakehouse: um pipeline completo de dados passando por mensageria, Data Lake, processamento distribuído e Business Intelligence.">
 
-<!-- Open Graph (LinkedIn, WhatsApp, Slack, Twitter) -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://anacarolina03.github.io/pipeline-dados/">
 <meta property="og:title" content="Pipeline de Dados End-to-End — das Fontes ao BI">
@@ -43,12 +42,6 @@
   .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.68rem;color:var(--muted)}
   .legend span{display:inline-flex;align-items:center;gap:5px}
   .dot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 8px currentColor;background:currentColor}
-
-  .toolbar{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-bottom:12px;}
-  .btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(160deg,#1c2841,#131c2b);color:var(--text);border:1px solid var(--stroke);border-radius:9px;padding:8px 14px;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;}
-  .btn:hover{border-color:var(--accent);box-shadow:0 0 16px -4px rgba(79,160,255,.5);transform:translateY(-1px);}
-  .btn:active{transform:translateY(0);}
-  .btn .ic{font-size:.9rem;}
 
   .stage{
     position:relative;width:100%;
@@ -118,10 +111,6 @@
       <span><i class="dot" style="color:var(--pink)"></i> Mensageria</span>
     </div>
   </header>
-
-  <div class="toolbar">
-    <button class="btn" id="btnPng"><span class="ic">🖼️</span> Baixar PNG para LinkedIn</button>
-  </div>
 
   <div class="stage">
     <div class="canvas-wrap">
@@ -668,55 +657,6 @@
   }
 
   requestAnimationFrame(render);
-
-  // ============================================================
-  // Botão: Baixar PNG em formato ideal para LinkedIn (1200x630)
-  // ============================================================
-  document.getElementById('btnPng').addEventListener('click', () => {
-    try{
-      // 1. Cria um canvas no formato ideal do LinkedIn (1200x630)
-      const LI_W = 1200;
-      const LI_H = 630;
-      const temp = document.createElement('canvas');
-      temp.width = LI_W;
-      temp.height = LI_H;
-      const tctx = temp.getContext('2d');
-
-      // 2. Fundo escuro
-      tctx.fillStyle = '#0b0f17';
-      tctx.fillRect(0, 0, LI_W, LI_H);
-
-      // 3. Desenha o canvas original redimensionado para caber
-      const origW = canvas.width;
-      const origH = canvas.height;
-      const ratio = Math.min(LI_W / origW, LI_H / origH);
-      const drawW = origW * ratio;
-      const drawH = origH * ratio;
-      const offsetX = (LI_W - drawW) / 2;
-      const offsetY = (LI_H - drawH) / 2;
-      tctx.drawImage(canvas, offsetX, offsetY, drawW, drawH);
-
-      // 4. Exporta como PNG
-      temp.toBlob(blob => {
-        if (!blob){ alert('Não foi possível gerar o PNG.'); return; }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'pipeline-dados-linkedin.png';
-        a.rel = 'noopener';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 500);
-      }, 'image/png');
-    }catch(err){
-      alert('Não foi possível exportar o PNG: ' + err.message);
-    }
-  });
-
 })();
 </script>
 </body>
