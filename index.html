@@ -3,7 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Arquitetura Geral do Sistema (End-to-End) — LinkedIn Edition</title>
+<title>Pipeline de Dados End-to-End — das Fontes ao BI</title>
+<meta name="description" content="Do OLTP ao Databricks Lakehouse: um pipeline completo de dados passando por mensageria, Data Lake, processamento distribuído e Business Intelligence.">
+
+<!-- Open Graph (LinkedIn, WhatsApp, Slack, Twitter) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://anacarolina03.github.io/pipeline-dados/">
+<meta property="og:title" content="Pipeline de Dados End-to-End — das Fontes ao BI">
+<meta property="og:description" content="Do OLTP ao Databricks Lakehouse: mensageria, Data Lake, processamento e BI em um fluxo visual.">
+<meta property="og:image" content="https://anacarolina03.github.io/pipeline-dados/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pipeline de Dados End-to-End — das Fontes ao BI">
+<meta name="twitter:description" content="Do OLTP ao Databricks Lakehouse: mensageria, Data Lake, processamento e BI.">
+<meta name="twitter:image" content="https://anacarolina03.github.io/pipeline-dados/preview.png">
+
 <style>
   :root{
     --bg:#0b0f17; --panel:#111827; --panel-2:#151d2c; --stroke:#2a3446; --stroke-soft:#1d2635;
@@ -21,7 +37,6 @@
   }
   .wrap{max-width:1280px;margin:0 auto}
 
-  /* ---------- Cabeçalho ---------- */
   header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px;}
   .title-block h1{font-size:1.3rem;font-weight:600;letter-spacing:.3px;}
   .title-block p{font-size:.74rem;color:var(--muted);margin-top:3px;font-family:ui-monospace,Consolas,monospace;}
@@ -29,14 +44,12 @@
   .legend span{display:inline-flex;align-items:center;gap:5px}
   .dot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 8px currentColor;background:currentColor}
 
-  /* ---------- Toolbar ---------- */
   .toolbar{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-bottom:12px;}
-  .btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(160deg,#1c2841,#131c2b);color:var(--text);border:1px solid var(--stroke);border-radius:9px;padding:7px 12px;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;}
+  .btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(160deg,#1c2841,#131c2b);color:var(--text);border:1px solid var(--stroke);border-radius:9px;padding:8px 14px;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;}
   .btn:hover{border-color:var(--accent);box-shadow:0 0 16px -4px rgba(79,160,255,.5);transform:translateY(-1px);}
   .btn:active{transform:translateY(0);}
   .btn .ic{font-size:.9rem;}
 
-  /* ---------- Palco principal (fluxo) ---------- */
   .stage{
     position:relative;width:100%;
     background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));
@@ -45,11 +58,9 @@
     box-shadow:0 30px 70px -30px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.03);
     margin-bottom:14px;
   }
-  /* Fluxo mais largo: 1600px — maior do que os cards abaixo (1280px) */
   .canvas-wrap{position:relative;width:1600px;height:640px;min-width:100%;}
   canvas#viz{display:block;width:100%;height:100%}
 
-  /* ---------- Cards embaixo (mais estreitos) ---------- */
   .content{
     margin-top:0;
     display:grid;
@@ -91,27 +102,13 @@
   .type-item.master{ border-left:3px solid var(--gold); }
   .type-item.ref{ border-left:3px solid var(--cyan); }
   .type-item.analit{ border-left:3px solid var(--green); }
-
-  /* ---------- Modo LinkedIn (retrato) ---------- */
-  body.linkedin{
-    background:linear-gradient(180deg,#0a0e15 0%,#0b0f17 100%);
-    padding:16px 12px;
-  }
-  body.linkedin .wrap{max-width:1080px;}
-  body.linkedin header.top{flex-direction:column;align-items:flex-start;gap:8px;}
-  body.linkedin .toolbar{width:100%;justify-content:flex-start;}
-  body.linkedin .canvas-wrap{width:1400px;height:560px;}
-  body.linkedin .content{grid-template-columns:repeat(2,1fr);max-width:100%;}
-  @media(max-width:900px){
-    body.linkedin .content{grid-template-columns:1fr;}
-  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
     <div class="title-block">
-      <h1>⚙️ Arquitetura Geral do Sistema (End-to-End)</h1>
+      <h1>⚙️ Pipeline de Dados End-to-End</h1>
       <p>Fontes → OLTP → Mensageria → Data Lake → Processamento → Databricks → BI</p>
     </div>
     <div class="legend">
@@ -123,9 +120,7 @@
   </header>
 
   <div class="toolbar">
-    <button class="btn" id="btnLinkedin"><span class="ic">📐</span> Modo LinkedIn</button>
-    <button class="btn" id="btnDownload"><span class="ic">⬇️</span> Baixar HTML</button>
-    <button class="btn" id="btnPng"><span class="ic">🖼️</span> Baixar PNG</button>
+    <button class="btn" id="btnPng"><span class="ic">🖼️</span> Baixar PNG para LinkedIn</button>
   </div>
 
   <div class="stage">
@@ -310,7 +305,6 @@
     const availW = W - padX*2;
     const availH = H - padY*2;
 
-    // Fluxo mais largo — 8 colunas distribuídas
     const col0W = Math.min(155, availW * 0.105);
     const col1W = Math.min(115, availW * 0.08);
     const asciiW = Math.max(ASCII_BOX_PX + 15, availW * 0.135);
@@ -676,100 +670,39 @@
   requestAnimationFrame(render);
 
   // ============================================================
-  // MODO LINKEDIN — alterna layout retrato
+  // Botão: Baixar PNG em formato ideal para LinkedIn (1200x630)
   // ============================================================
-  document.getElementById('btnLinkedin').addEventListener('click', () => {
-    document.body.classList.toggle('linkedin');
-    setTimeout(resize, 50);
-  });
-
-  // ============================================================
-  // DOWNLOAD ROBUSTO — 4 camadas de fallback
-  // ============================================================
-  let ORIGINAL_HTML = null;
-  if (location.protocol === 'http:' || location.protocol === 'https:') {
-    fetch(location.href)
-      .then(r => r.ok ? r.text() : null)
-      .then(txt => { if (txt) ORIGINAL_HTML = txt; })
-      .catch(() => {});
-  }
-
-  function getHtmlSource(){
-    if (ORIGINAL_HTML) return ORIGINAL_HTML;
-    return '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-  }
-
-  function copyToClipboard(text){
-    if (navigator.clipboard && navigator.clipboard.writeText){
-      return navigator.clipboard.writeText(text);
-    }
-    return new Promise(resolve => {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); } catch(e){}
-      document.body.removeChild(ta);
-      resolve();
-    });
-  }
-
-  function triggerDownload(content, filename, mime){
-    const blob = new Blob([content], {type: mime + ';charset=utf-8'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.rel = 'noopener';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-
-    let clicked = false;
-    try { a.click(); clicked = true; } catch(e){ clicked = false; }
-
-    setTimeout(() => {
-      try { document.body.removeChild(a); } catch(e){}
-      if (!clicked) {
-        try {
-          const w = window.open(url, '_blank');
-          if (!w) {
-            copyToClipboard(content).then(() => {
-              alert('Download não suportado.\n\nO código HTML foi copiado para a área de transferência.');
-            });
-          }
-        } catch(e) {
-          copyToClipboard(content).then(() => {
-            alert('Download bloqueado.\n\nO código foi copiado para a área de transferência.');
-          });
-        }
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }, 500);
-  }
-
-  document.getElementById('btnDownload').addEventListener('click', () => {
-    const html = getHtmlSource();
-    triggerDownload(html, 'arquitetura-sistema.html', 'text/html');
-  });
-
   document.getElementById('btnPng').addEventListener('click', () => {
     try{
+      // 1. Cria um canvas no formato ideal do LinkedIn (1200x630)
+      const LI_W = 1200;
+      const LI_H = 630;
       const temp = document.createElement('canvas');
-      temp.width = canvas.width;
-      temp.height = canvas.height;
+      temp.width = LI_W;
+      temp.height = LI_H;
       const tctx = temp.getContext('2d');
-      tctx.fillStyle = '#0b0f17';
-      tctx.fillRect(0, 0, temp.width, temp.height);
-      tctx.drawImage(canvas, 0, 0);
 
+      // 2. Fundo escuro
+      tctx.fillStyle = '#0b0f17';
+      tctx.fillRect(0, 0, LI_W, LI_H);
+
+      // 3. Desenha o canvas original redimensionado para caber
+      const origW = canvas.width;
+      const origH = canvas.height;
+      const ratio = Math.min(LI_W / origW, LI_H / origH);
+      const drawW = origW * ratio;
+      const drawH = origH * ratio;
+      const offsetX = (LI_W - drawW) / 2;
+      const offsetY = (LI_H - drawH) / 2;
+      tctx.drawImage(canvas, offsetX, offsetY, drawW, drawH);
+
+      // 4. Exporta como PNG
       temp.toBlob(blob => {
         if (!blob){ alert('Não foi possível gerar o PNG.'); return; }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'arquitetura-diagrama.png';
+        a.download = 'pipeline-dados-linkedin.png';
         a.rel = 'noopener';
         a.style.display = 'none';
         document.body.appendChild(a);
