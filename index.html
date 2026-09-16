@@ -3,661 +3,289 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pipeline de Dados End-to-End — das Fontes ao BI</title>
-<meta name="description" content="Do OLTP ao Databricks Lakehouse: um pipeline completo de dados passando por mensageria, Data Lake, processamento distribuído e Business Intelligence.">
-
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://anacarolina03.github.io/pipeline-dados/">
-<meta property="og:title" content="Pipeline de Dados End-to-End — das Fontes ao BI">
-<meta property="og:description" content="Do OLTP ao Databricks Lakehouse: mensageria, Data Lake, processamento e BI em um fluxo visual.">
-<meta property="og:image" content="https://anacarolina03.github.io/pipeline-dados/preview.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Pipeline de Dados End-to-End — das Fontes ao BI">
-<meta name="twitter:description" content="Do OLTP ao Databricks Lakehouse: mensageria, Data Lake, processamento e BI.">
-<meta name="twitter:image" content="https://anacarolina03.github.io/pipeline-dados/preview.png">
-
+<title>Pipeline de Dados End-to-End — Vertical</title>
 <style>
-  :root{
-    --bg:#0b0f17; --panel:#111827; --panel-2:#151d2c; --stroke:#2a3446; --stroke-soft:#1d2635;
-    --text:#e6edf7; --muted:#8b98ad; --blue:#4fa0ff; --green:#3ddc84; --purple:#b48cff;
-    --amber:#ffb347; --cyan:#4fd8e8; --orange:#ff8d41; --pink:#ff7dd2; --red:#ff5c5c;
-    --gold:#ffd166; --accent:#4fa0ff;
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0b0f17;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{min-height:100%}
-  body{
-    background:radial-gradient(1200px 600px at 15% -10%, #16233a 0%, transparent 60%),
-               radial-gradient(900px 500px at 110% 110%, #1a1430 0%, transparent 55%), var(--bg);
-    color:var(--text); font-family:"Segoe UI","Google Sans",Roboto,Helvetica,Arial,sans-serif;
-    padding:24px 16px 50px; -webkit-font-smoothing:antialiased;
+  .frame {
+    width: 100%;
+    max-width: 900px;
+    background: radial-gradient(800px 500px at 15% -10%, #16233a 0%, transparent 60%),
+                radial-gradient(700px 400px at 110% 110%, #1a1430 0%, transparent 55%),
+                #0b0f17;
+    border: 1px solid #1d2635;
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 30px 70px -30px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.03);
   }
-  .wrap{max-width:1280px;margin:0 auto}
-
-  header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px;}
-  .title-block h1{font-size:1.3rem;font-weight:600;letter-spacing:.3px;}
-  .title-block p{font-size:.74rem;color:var(--muted);margin-top:3px;font-family:ui-monospace,Consolas,monospace;}
-  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.68rem;color:var(--muted)}
-  .legend span{display:inline-flex;align-items:center;gap:5px}
-  .dot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 8px currentColor;background:currentColor}
-
-  .stage{
-    position:relative;width:100%;
-    background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));
-    border:1px solid var(--stroke-soft);border-radius:18px;
-    overflow:auto;
-    box-shadow:0 30px 70px -30px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.03);
-    margin-bottom:14px;
-  }
-  .canvas-wrap{position:relative;width:1600px;height:640px;min-width:100%;}
-  canvas#viz{display:block;width:100%;height:100%}
-
-  .content{
-    margin-top:0;
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-    gap:12px;
-    max-width:1280px;
-    margin-left:auto;
-    margin-right:auto;
-  }
-  .card{background:linear-gradient(160deg,var(--panel-2),var(--panel));border:1px solid var(--stroke);border-radius:12px;padding:12px 14px;transition:border-color .2s,box-shadow .2s,transform .15s;}
-  .card:hover{border-color:var(--accent);box-shadow:0 0 20px -6px rgba(79,160,255,.45);transform:translateY(-2px)}
-  .card h2{font-size:.68rem;letter-spacing:1px;text-transform:uppercase;color:var(--blue);font-weight:700;margin-bottom:7px;}
-  .ascii-box{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:.66rem;line-height:1.4;color:var(--text);background:rgba(0,0,0,.35);border:1px solid var(--stroke);border-radius:9px;padding:9px 11px;white-space:pre;overflow-x:auto;}
-  .flow-note{margin-top:10px;font-family:ui-monospace,Consolas,monospace;font-size:.66rem;color:var(--muted);text-align:center;border-top:1px dashed var(--stroke);padding-top:9px;}
-
-  .source-grid{display:grid;grid-template-columns:1fr;gap:8px;}
-  .source-block{background:rgba(0,0,0,.25);border:1px solid var(--stroke);border-radius:9px;padding:8px 11px;border-left:3px solid var(--cyan);}
-  .source-block.web{ border-left-color: var(--blue); }
-  .source-block.java{ border-left-color: var(--orange); }
-  .source-block.corp{ border-left-color: var(--purple); }
-  .source-block.batch{ border-left-color: var(--amber); }
-  .source-block.mobile{ border-left-color: var(--green); }
-  .source-block h3{font-size:.62rem;letter-spacing:.7px;text-transform:uppercase;color:var(--cyan);font-weight:700;margin-bottom:4px;}
-  .source-block.web h3{ color: var(--blue); }
-  .source-block.java h3{ color: var(--orange); }
-  .source-block.corp h3{ color: var(--purple); }
-  .source-block.batch h3{ color: var(--amber); }
-  .source-block.mobile h3{ color: var(--green); }
-  .source-block .main{font-size:.76rem;font-weight:600;color:var(--text);margin-bottom:2px;}
-  .source-block .sub{font-size:.65rem;color:var(--muted);font-family:ui-monospace,Consolas,monospace;}
-
-  .four-types{margin-top:10px;padding-top:10px;border-top:1px dashed var(--stroke);}
-  .four-types h4{font-size:.62rem;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:7px;}
-  .type-grid{display:grid;grid-template-columns:1fr;gap:5px;}
-  .type-item{display:flex;justify-content:space-between;align-items:center;gap:6px;background:rgba(0,0,0,.3);border:1px solid var(--stroke);border-radius:7px;padding:5px 9px;font-size:.66rem;}
-  .type-item .name{font-weight:600;color:var(--text);}
-  .type-item .where{color:var(--muted);font-family:ui-monospace,Consolas,monospace;font-size:.6rem;}
-  .type-item.trans{ border-left:3px solid var(--blue); }
-  .type-item.master{ border-left:3px solid var(--gold); }
-  .type-item.ref{ border-left:3px solid var(--cyan); }
-  .type-item.analit{ border-left:3px solid var(--green); }
+  svg { display: block; width: 100%; height: auto; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div class="title-block">
-      <h1>⚙️ Pipeline de Dados End-to-End</h1>
-      <p>Fontes → OLTP → Mensageria → Data Lake → Processamento → Databricks → BI</p>
-    </div>
-    <div class="legend">
-      <span><i class="dot" style="color:var(--blue)"></i> Pipelines</span>
-      <span><i class="dot" style="color:var(--green)"></i> Dados</span>
-      <span><i class="dot" style="color:var(--orange)"></i> Microsserviços</span>
-      <span><i class="dot" style="color:var(--pink)"></i> Mensageria</span>
-    </div>
-  </header>
+<div class="frame">
+<svg viewBox="0 0 860 1580" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="cardGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#151d2c"/>
+      <stop offset="100%" stop-color="#101725"/>
+    </linearGradient>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4fa0ff"/>
+    </marker>
+    <marker id="arrowPink" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ff7dd2"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ff5c5c"/>
+    </marker>
+    <marker id="arrowCyan" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4fd8e8"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ffb347"/>
+    </marker>
+    <marker id="arrowGray" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8b98ad" opacity="0.7"/>
+    </marker>
+    <filter id="glowBlue" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowRed" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowAmber" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
 
-  <div class="stage">
-    <div class="canvas-wrap">
-      <canvas id="viz"></canvas>
-    </div>
-  </div>
+  <!-- HEADER -->
+  <text x="22" y="34" fill="#e6edf7" font-size="18" font-weight="600">⚙️ Pipeline de Dados End-to-End</text>
+  <text x="22" y="56" fill="#8b98ad" font-size="11.5" font-family="ui-monospace, Consolas, monospace">
+    Fontes → OLTP → Mensageria → Data Lake → Processamento → Databricks → BI
+  </text>
 
-  <div class="content">
-    <div class="card">
-      <h2>[ FONTES DE DADOS ]</h2>
-      <div class="source-grid">
-        <div class="source-block corp">
-          <h3>APLICAÇÕES CORPORATIVAS</h3>
-          <div class="main">ERP / CRM SaaS</div>
-          <div class="sub">(Salesforce, SAP)</div>
-        </div>
-        <div class="source-block web">
-          <h3>APLICAÇÕES WEB</h3>
-          <div class="main">Front-End / Portal</div>
-          <div class="sub">(React, Angular, Transações)</div>
-        </div>
-        <div class="source-block java">
-          <h3>JAVA MICROSSERVIÇOS</h3>
-          <div class="main">Spring Boot / APIs REST</div>
-          <div class="sub">(Kafka, Eventos, gRPC)</div>
-        </div>
-        <div class="source-block batch">
-          <h3>CRON / BATCH</h3>
-          <div class="main">Arquivos Legados</div>
-          <div class="sub">(CSV, XML, S3)</div>
-        </div>
-        <div class="source-block mobile">
-          <h3>APLICAÇÕES MOBILE / IOT</h3>
-          <div class="main">App iOS/Android / IoT</div>
-          <div class="sub">(SQLite local integrado)</div>
-        </div>
-      </div>
+  <!-- LEGEND -->
+  <g transform="translate(22, 78)" font-size="10.5" fill="#8b98ad">
+    <circle cx="0" cy="5" r="4" fill="#4fa0ff"/><text x="11" y="9">Pipelines</text>
+    <circle cx="80" cy="5" r="4" fill="#3ddc84"/><text x="91" y="9">Dados</text>
+    <circle cx="150" cy="5" r="4" fill="#ff8d41"/><text x="161" y="9">Microsserviços</text>
+    <circle cx="260" cy="5" r="4" fill="#ff7dd2"/><text x="271" y="9">Mensageria</text>
+  </g>
 
-      <div class="four-types">
-        <h4>Os 4 tipos de dados em uma organização</h4>
-        <div class="type-grid">
-          <div class="type-item trans">
-            <span class="name">Transacionais</span>
-            <span class="where">OLTP → pipeline</span>
-          </div>
-          <div class="type-item master">
-            <span class="name">Mestres (Master Data)</span>
-            <span class="where">MDM / ERP / CRM</span>
-          </div>
-          <div class="type-item ref">
-            <span class="name">Referência</span>
-            <span class="where">Tabelas de apoio</span>
-          </div>
-          <div class="type-item analit">
-            <span class="name">Analíticos</span>
-            <span class="where">DW / Lakehouse</span>
-          </div>
-        </div>
-      </div>
+  <!-- ================= 1. FONTES ================= -->
+  <g>
+    <rect x="22" y="110" width="816" height="200" rx="12" fill="rgba(19,28,43,0.45)" stroke="#1d2635"/>
+    <text x="40" y="138" fill="#5f6b80" font-size="10" font-weight="700" letter-spacing="2" font-family="ui-monospace, Consolas, monospace">FONTES DE DADOS</text>
 
-      <div class="flow-note">↓ API Gateway / Load Balancer</div>
-    </div>
+    <!-- Corporativas -->
+    <g transform="translate(40, 155)">
+      <rect x="0" y="0" width="150" height="60" rx="8" fill="url(#cardGrad)" stroke="#b48cff" stroke-opacity="0.55" stroke-width="1.2"/>
+      <rect x="0" y="0" width="150" height="3" rx="1.5" fill="#b48cff"/>
+      <text x="75" y="26" text-anchor="middle" fill="#e6edf7" font-size="11.5" font-weight="600">Corporativas</text>
+      <text x="75" y="42" text-anchor="middle" fill="#b48cff" font-size="9.5" font-family="ui-monospace, Consolas, monospace">ERP / CRM SaaS</text>
+      <text x="75" y="55" text-anchor="middle" fill="#8b98ad" font-size="9">Salesforce, SAP</text>
+    </g>
+    <!-- Web -->
+    <g transform="translate(205, 155)">
+      <rect x="0" y="0" width="150" height="60" rx="8" fill="url(#cardGrad)" stroke="#4fa0ff" stroke-opacity="0.55" stroke-width="1.2"/>
+      <rect x="0" y="0" width="150" height="3" rx="1.5" fill="#4fa0ff"/>
+      <text x="75" y="26" text-anchor="middle" fill="#e6edf7" font-size="11.5" font-weight="600">Aplicações Web</text>
+      <text x="75" y="42" text-anchor="middle" fill="#4fa0ff" font-size="9.5" font-family="ui-monospace, Consolas, monospace">Portal / Front-End</text>
+      <text x="75" y="55" text-anchor="middle" fill="#8b98ad" font-size="9">React, Angular</text>
+    </g>
+    <!-- Java -->
+    <g transform="translate(370, 155)">
+      <rect x="0" y="0" width="150" height="60" rx="8" fill="url(#cardGrad)" stroke="#ff8d41" stroke-opacity="0.55" stroke-width="1.2"/>
+      <rect x="0" y="0" width="150" height="3" rx="1.5" fill="#ff8d41"/>
+      <text x="75" y="26" text-anchor="middle" fill="#e6edf7" font-size="11.5" font-weight="600">Java Microsserviços</text>
+      <text x="75" y="42" text-anchor="middle" fill="#ff8d41" font-size="9.5" font-family="ui-monospace, Consolas, monospace">Spring Boot / REST</text>
+      <text x="75" y="55" text-anchor="middle" fill="#8b98ad" font-size="9">Kafka, Eventos, gRPC</text>
+    </g>
+    <!-- Batch -->
+    <g transform="translate(535, 155)">
+      <rect x="0" y="0" width="150" height="60" rx="8" fill="url(#cardGrad)" stroke="#ffb347" stroke-opacity="0.55" stroke-width="1.2"/>
+      <rect x="0" y="0" width="150" height="3" rx="1.5" fill="#ffb347"/>
+      <text x="75" y="26" text-anchor="middle" fill="#e6edf7" font-size="11.5" font-weight="600">CRON / Batch</text>
+      <text x="75" y="42" text-anchor="middle" fill="#ffb347" font-size="9.5" font-family="ui-monospace, Consolas, monospace">Arquivos Legados</text>
+      <text x="75" y="55" text-anchor="middle" fill="#8b98ad" font-size="9">CSV, XML, S3</text>
+    </g>
+    <!-- Mobile -->
+    <g transform="translate(700, 155)">
+      <rect x="0" y="0" width="120" height="60" rx="8" fill="url(#cardGrad)" stroke="#3ddc84" stroke-opacity="0.55" stroke-width="1.2"/>
+      <rect x="0" y="0" width="120" height="3" rx="1.5" fill="#3ddc84"/>
+      <text x="60" y="26" text-anchor="middle" fill="#e6edf7" font-size="11.5" font-weight="600">Mobile / IoT</text>
+      <text x="60" y="42" text-anchor="middle" fill="#3ddc84" font-size="9.5" font-family="ui-monospace, Consolas, monospace">App iOS/Android</text>
+      <text x="60" y="55" text-anchor="middle" fill="#8b98ad" font-size="9">SQLite local</text>
+    </g>
 
-    <div class="card">
-      <h2>[ CAMADA OPERACIONAL (OLTP) ]</h2>
-      <div class="ascii-box">┌───────────────────────────┐
-│   SGBD Cliente-Servidor   │
-│  - PostgreSQL / MySQL     │
-│  - MongoDB (NoSQL Doc)    │
-│  - Oracle Database        │
-│  - Microsoft SQL Server   │
-│  - IBM DB2                │
-│  - Alta Normalização      │
-│  - Propriedades ACID      │
-│  - Mecanismo WAL (Log)    │
-└───────────────────────────┘</div>
-      <div class="flow-note">↓ ELT / CDC</div>
-    </div>
+    <!-- 4 tipos de dados -->
+    <g transform="translate(40, 232)">
+      <text x="0" y="0" fill="#8b98ad" font-size="9" font-weight="700" letter-spacing="1" font-family="ui-monospace, Consolas, monospace">OS 4 TIPOS DE DADOS EM UMA ORGANIZAÇÃO</text>
+      <g transform="translate(0, 8)">
+        <rect x="0" y="0" width="180" height="22" rx="5" fill="rgba(0,0,0,.3)" stroke="#2a3446"/>
+        <rect x="0" y="0" width="3" height="22" rx="1.5" fill="#4fa0ff"/>
+        <text x="12" y="15" fill="#e6edf7" font-size="10" font-weight="600">Transacionais</text>
+        <text x="170" y="15" fill="#8b98ad" font-size="9" text-anchor="end" font-family="ui-monospace, Consolas, monospace">OLTP</text>
+      </g>
+      <g transform="translate(195, 8)">
+        <rect x="0" y="0" width="180" height="22" rx="5" fill="rgba(0,0,0,.3)" stroke="#2a3446"/>
+        <rect x="0" y="0" width="3" height="22" rx="1.5" fill="#ffd166"/>
+        <text x="12" y="15" fill="#e6edf7" font-size="10" font-weight="600">Mestres</text>
+        <text x="170" y="15" fill="#8b98ad" font-size="9" text-anchor="end" font-family="ui-monospace, Consolas, monospace">MDM/ERP</text>
+      </g>
+      <g transform="translate(390, 8)">
+        <rect x="0" y="0" width="180" height="22" rx="5" fill="rgba(0,0,0,.3)" stroke="#2a3446"/>
+        <rect x="0" y="0" width="3" height="22" rx="1.5" fill="#4fd8e8"/>
+        <text x="12" y="15" fill="#e6edf7" font-size="10" font-weight="600">Referência</text>
+        <text x="170" y="15" fill="#8b98ad" font-size="9" text-anchor="end" font-family="ui-monospace, Consolas, monospace">Apoio</text>
+      </g>
+      <g transform="translate(585, 8)">
+        <rect x="0" y="0" width="180" height="22" rx="5" fill="rgba(0,0,0,.3)" stroke="#2a3446"/>
+        <rect x="0" y="0" width="3" height="22" rx="1.5" fill="#3ddc84"/>
+        <text x="12" y="15" fill="#e6edf7" font-size="10" font-weight="600">Analíticos</text>
+        <text x="170" y="15" fill="#8b98ad" font-size="9" text-anchor="end" font-family="ui-monospace, Consolas, monospace">DW/Lake</text>
+      </g>
+    </g>
+  </g>
 
-    <div class="card">
-      <h2>[ CAMADA DE MENSAGERIA / STREAMING ]</h2>
-      <div class="ascii-box">┌───────────────────────────┐
-│   BROKERS DE EVENTOS      │
-│  - Apache Kafka           │
-│  - RabbitMQ               │
-│  - Apache Pulsar          │
-│  - AWS SQS / SNS          │
-│  - Google Pub/Sub         │
-│  - Redis Streams          │
-└───────────────────────────┘</div>
-    </div>
+  <!-- Seta Fontes → Gateway -->
+  <path d="M 430 318 L 430 348" stroke="#4fa0ff" stroke-width="2.2" fill="none" marker-end="url(#arrowBlue)" opacity="0.9"/>
+  <text x="445" y="336" fill="#6b7a90" font-size="9.5" font-family="ui-monospace, Consolas, monospace">ELT / CDC</text>
 
-    <div class="card">
-      <h2>[ CAMADA DE BIG DATA ]</h2>
-      <div class="ascii-box">┌───────────────────────────┐
-│         DATA LAKE         │
-│   (AWS S3 / Google GCS)   │
-│  - Dados Brutos           │
-│  - Schema-on-Read         │
-│  - Arquivos JSON/CSV/Logs │
-├───────────────────────────┤
-│   Ferramentas Populares:  │
-│  - Apache Iceberg         │
-│  - Delta Lake             │
-│  - Apache Hudi            │
-│  - Apache Paimon          │
-└───────────────────────────┘</div>
-    </div>
+  <!-- ================= 2. GATEWAY ================= -->
+  <g transform="translate(315, 355)">
+    <rect x="0" y="0" width="230" height="58" rx="10" fill="url(#cardGrad)" stroke="#4fa0ff" stroke-opacity="0.85" stroke-width="1.5" filter="url(#glowBlue)"/>
+    <rect x="0" y="0" width="230" height="3.5" rx="1.75" fill="#4fa0ff"/>
+    <text x="115" y="28" text-anchor="middle" fill="#e6edf7" font-size="13" font-weight="600">API Gateway</text>
+    <text x="115" y="46" text-anchor="middle" fill="#4fa0ff" font-size="10" font-family="ui-monospace, Consolas, monospace">Load Balancer</text>
+  </g>
 
-    <div class="card">
-      <h2>[ CAMADA DE PROCESSAMENTO ]</h2>
-      <div class="ascii-box">┌───────────────────────────┐
-│      Apache Spark         │
-│  - Batch + Streaming      │
-│  - Spark SQL / MLlib      │
-│  - Apache Flink           │
-│  - Kafka Streams          │
-└───────────────────────────┘</div>
-    </div>
+  <!-- Seta Gateway → OLTP -->
+  <path d="M 430 418 L 430 448" stroke="#4fa0ff" stroke-width="2.2" fill="none" marker-end="url(#arrowBlue)" opacity="0.9"/>
 
-    <div class="card">
-      <h2>[ CAMADA DE DATA LAKEHOUSE ]</h2>
-      <div class="ascii-box">┌───────────────────────────┐
-│        DATABRICKS         │
-│   (Unified Data Platform) │
-│  - Delta Lake Engine      │
-│  - Spark + Photon         │
-│  - Unity Catalog          │
-│  - Databricks SQL (DBSQL) │
-│  - MLflow / MLOps         │
-└───────────────────────────┘</div>
-    </div>
+  <!-- ================= 3. OLTP ================= -->
+  <g>
+    <rect x="115" y="455" width="630" height="150" rx="12" fill="url(#cardGrad)" stroke="#4fa0ff" stroke-opacity="0.6" stroke-width="1.3"/>
+    <rect x="115" y="455" width="630" height="3.5" rx="1.75" fill="#4fa0ff"/>
+    <text x="135" y="478" fill="#4fa0ff" font-size="10" font-weight="700" font-family="ui-monospace, Consolas, monospace" letter-spacing="1">CAMADA OPERACIONAL (OLTP)</text>
+    <g font-family="ui-monospace, Consolas, monospace" font-size="11.5" fill="#c9d4e5">
+      <text x="135" y="505">┌───────────────────────────────┐   ┌──────────────────────────────┐</text>
+      <text x="135" y="521">│  SGBD Cliente-Servidor        │   │  - Alta Normalização         │</text>
+      <text x="135" y="537">│  - PostgreSQL / MySQL         │   │  - Propriedades ACID         │</text>
+      <text x="135" y="553">│  - MongoDB (NoSQL Documento)  │   │  - Mecanismo WAL (Log)       │</text>
+      <text x="135" y="569">│  - Oracle / SQL Server / DB2  │   │  - Integridade Referencial   │</text>
+      <text x="135" y="585">└───────────────────────────────┘   └──────────────────────────────┘</text>
+    </g>
+  </g>
 
-    <div class="card">
-      <h2>[ CAMADA DE BUSINESS INTELLIGENCE ]</h2>
-      <div class="ascii-box">┌───────────────────────────┐
-│   Power BI / Tableau      │
-│  - Dashboards Visuais     │
-│  - Métricas de Acurácia   │
-│  - Tomada de Decisão      │
-└───────────────────────────┘</div>
-    </div>
-  </div>
+  <!-- Seta OLTP → Mensageria -->
+  <path d="M 430 608 L 430 640" stroke="#ff7dd2" stroke-width="2.2" fill="none" marker-end="url(#arrowPink)" opacity="0.9"/>
+  <text x="445" y="628" fill="#6b7a90" font-size="9.5" font-family="ui-monospace, Consolas, monospace">CDC / eventos</text>
+
+  <!-- ================= 4. MENSAGERIA ================= -->
+  <g>
+    <rect x="115" y="647" width="630" height="150" rx="12" fill="url(#cardGrad)" stroke="#ff7dd2" stroke-opacity="0.6" stroke-width="1.3"/>
+    <rect x="115" y="647" width="630" height="3.5" rx="1.75" fill="#ff7dd2"/>
+    <text x="135" y="670" fill="#ff7dd2" font-size="10" font-weight="700" font-family="ui-monospace, Consolas, monospace" letter-spacing="1">CAMADA DE MENSAGERIA / STREAMING</text>
+    <g font-family="ui-monospace, Consolas, monospace" font-size="11.5" fill="#c9d4e5">
+      <text x="135" y="697">┌───────────────────────────────┐   ┌──────────────────────────────┐</text>
+      <text x="135" y="713">│  BROKERS DE EVENTOS           │   │  - AWS SQS / SNS             │</text>
+      <text x="135" y="729">│  - Apache Kafka               │   │  - Google Pub/Sub            │</text>
+      <text x="135" y="745">│  - RabbitMQ / Apache Pulsar   │   │  - Redis Streams             │</text>
+      <text x="135" y="761">│  - Filas duráveis             │   │  - Pub/Sub assíncrono        │</text>
+      <text x="135" y="777">└───────────────────────────────┘   └──────────────────────────────┘</text>
+    </g>
+  </g>
+
+  <!-- Seta Mensageria → Data Lake -->
+  <path d="M 430 800 L 430 832" stroke="#ff7dd2" stroke-width="2.2" fill="none" marker-end="url(#arrowPink)" opacity="0.9"/>
+  <text x="445" y="820" fill="#6b7a90" font-size="9.5" font-family="ui-monospace, Consolas, monospace">ingestão contínua</text>
+
+  <!-- ================= 5. DATA LAKE ================= -->
+  <g>
+    <rect x="115" y="839" width="630" height="170" rx="12" fill="url(#cardGrad)" stroke="#4fd8e8" stroke-opacity="0.6" stroke-width="1.3"/>
+    <rect x="115" y="839" width="630" height="3.5" rx="1.75" fill="#4fd8e8"/>
+    <text x="135" y="862" fill="#4fd8e8" font-size="10" font-weight="700" font-family="ui-monospace, Consolas, monospace" letter-spacing="1">CAMADA DE BIG DATA — DATA LAKE</text>
+    <g font-family="ui-monospace, Consolas, monospace" font-size="11.5" fill="#c9d4e5">
+      <text x="135" y="889">┌───────────────────────────────┐   ┌──────────────────────────────┐</text>
+      <text x="135" y="905">│  DATA LAKE (AWS S3 / GCS)     │   │  FERRAMENTAS POPULARES       │</text>
+      <text x="135" y="921">│  - Dados Brutos               │   │  - Apache Iceberg            │</text>
+      <text x="135" y="937">│  - Schema-on-Read             │   │  - Delta Lake                │</text>
+      <text x="135" y="953">│  - JSON / CSV / Logs          │   │  - Apache Hudi / Paimon      │</text>
+      <text x="135" y="969">└───────────────────────────────┘   └──────────────────────────────┘</text>
+    </g>
+  </g>
+
+  <!-- Seta Data Lake → Processamento -->
+  <path d="M 430 1012 L 430 1044" stroke="#4fd8e8" stroke-width="2.2" fill="none" marker-end="url(#arrowCyan)" opacity="0.9"/>
+  <text x="445" y="1032" fill="#6b7a90" font-size="9.5" font-family="ui-monospace, Consolas, monospace">leitura distribuída</text>
+
+  <!-- ================= 6. PROCESSAMENTO (SPARK) ================= -->
+  <g>
+    <rect x="115" y="1051" width="630" height="130" rx="12" fill="url(#cardGrad)" stroke="#ffb347" stroke-opacity="0.75" stroke-width="1.4" filter="url(#glowAmber)"/>
+    <rect x="115" y="1051" width="630" height="3.5" rx="1.75" fill="#ffb347"/>
+    <text x="135" y="1074" fill="#ffb347" font-size="10" font-weight="700" font-family="ui-monospace, Consolas, monospace" letter-spacing="1">CAMADA DE PROCESSAMENTO</text>
+    <g font-family="ui-monospace, Consolas, monospace" font-size="11.5" fill="#c9d4e5">
+      <text x="135" y="1101">┌───────────────────────────────┐   ┌──────────────────────────────┐</text>
+      <text x="135" y="1117">│  Apache Spark                 │   │  - Spark SQL / MLlib         │</text>
+      <text x="135" y="1133">│  - Batch + Streaming          │   │  - Apache Flink              │</text>
+      <text x="135" y="1149">│  - Engine unificada           │   │  - Kafka Streams             │</text>
+      <text x="135" y="1165">└───────────────────────────────┘   └──────────────────────────────┘</text>
+    </g>
+  </g>
+
+  <!-- Seta Processamento → Databricks -->
+  <path d="M 430 1184 L 430 1216" stroke="#ffb347" stroke-width="2.2" fill="none" marker-end="url(#arrowAmber)" opacity="0.9"/>
+  <text x="445" y="1204" fill="#6b7a90" font-size="9.5" font-family="ui-monospace, Consolas, monospace">Delta / Spark</text>
+
+  <!-- ================= 7. DATABRICKS ================= -->
+  <g>
+    <rect x="115" y="1223" width="630" height="150" rx="12" fill="url(#cardGrad)" stroke="#ff5c5c" stroke-opacity="0.75" stroke-width="1.4" filter="url(#glowRed)"/>
+    <rect x="115" y="1223" width="630" height="3.5" rx="1.75" fill="#ff5c5c"/>
+    <text x="135" y="1246" fill="#ff5c5c" font-size="10" font-weight="700" font-family="ui-monospace, Consolas, monospace" letter-spacing="1">CAMADA DE DATA LAKEHOUSE — DATABRICKS</text>
+    <g font-family="ui-monospace, Consolas, monospace" font-size="11.5" fill="#c9d4e5">
+      <text x="135" y="1273">┌───────────────────────────────┐   ┌──────────────────────────────┐</text>
+      <text x="135" y="1289">│  DATABRICKS                   │   │  - Databricks SQL (DBSQL)    │</text>
+      <text x="135" y="1305">│  - Unified Data Platform      │   │  - Unity Catalog             │</text>
+      <text x="135" y="1321">│  - Delta Lake Engine          │   │  - MLflow / MLOps            │</text>
+      <text x="135" y="1337">│  - Spark + Photon             │   │  - Governança de dados       │</text>
+      <text x="135" y="1353">└───────────────────────────────┘   └──────────────────────────────┘</text>
+    </g>
+  </g>
+
+  <!-- Seta Databricks → BI -->
+  <path d="M 430 1376 L 430 1408" stroke="#ff5c5c" stroke-width="2.2" fill="none" marker-end="url(#arrowRed)" opacity="0.9"/>
+  <text x="445" y="1396" fill="#6b7a90" font-size="9.5" font-family="ui-monospace, Consolas, monospace">consultas SQL</text>
+
+  <!-- ================= 8. BI ================= -->
+  <g>
+    <rect x="115" y="1415" width="630" height="130" rx="12" fill="url(#cardGrad)" stroke="#4fa0ff" stroke-opacity="0.75" stroke-width="1.4" filter="url(#glowBlue)"/>
+    <rect x="115" y="1415" width="630" height="3.5" rx="1.75" fill="#4fa0ff"/>
+    <text x="135" y="1438" fill="#4fa0ff" font-size="10" font-weight="700" font-family="ui-monospace, Consolas, monospace" letter-spacing="1">BUSINESS INTELLIGENCE</text>
+    <g font-family="ui-monospace, Consolas, monospace" font-size="11.5" fill="#c9d4e5">
+      <text x="135" y="1465">┌───────────────────────────────┐   ┌──────────────────────────────┐</text>
+      <text x="135" y="1481">│  Power BI / Tableau           │   │  - Métricas de Acurácia      │</text>
+      <text x="135" y="1497">│  - Dashboards Visuais         │   │  - Tomada de Decisão         │</text>
+      <text x="135" y="1513">└───────────────────────────────┘   └──────────────────────────────┘</text>
+    </g>
+  </g>
+
+  <!-- FOOTER -->
+  <text x="430" y="1570" text-anchor="middle" fill="#4a5568" font-size="10" font-family="ui-monospace, Consolas, monospace">
+    Pipeline de Dados End-to-End · Fontes → OLTP → Mensageria → Data Lake → Processamento → Databricks → BI
+  </text>
+</svg>
 </div>
-
-<script>
-(function(){
-  const canvas = document.getElementById('viz');
-  const wrap = canvas.parentElement;
-  const ctx = canvas.getContext('2d');
-  let W = 0, H = 0, DPR = 1;
-  let t0 = performance.now();
-
-  const COLORS = {
-    bg:'#0b0f17', panel:'#131c2b', panel2:'#101725', stroke:'#2a3446',
-    text:'#e6edf7', muted:'#8b98ad', blue:'#4fa0ff', green:'#3ddc84',
-    purple:'#b48cff', amber:'#ffb347', cyan:'#4fd8e8', orange:'#ff8d41',
-    pink:'#ff7dd2', red:'#ff5c5c', gold:'#ffd166'
-  };
-
-  function resize(){
-    DPR = window.devicePixelRatio || 1;
-    const r = wrap.getBoundingClientRect();
-    W = r.width; H = r.height;
-    canvas.width = W * DPR;
-    canvas.height = H * DPR;
-    canvas.style.width = W + 'px';
-    canvas.style.height = H + 'px';
-    ctx.setTransform(DPR,0,0,DPR,0,0);
-  }
-  window.addEventListener('resize', resize);
-  resize();
-
-  const ASCII_BOX_PX = 195;
-  const ASCII_LINE_H = 10.5;
-  const ASCII_FONT = '9px ui-monospace,Consolas,monospace';
-
-  function layout(){
-    const padX = Math.max(12, W*0.012);
-    const padY = 28;
-    const availW = W - padX*2;
-    const availH = H - padY*2;
-
-    const col0W = Math.min(155, availW * 0.105);
-    const col1W = Math.min(115, availW * 0.08);
-    const asciiW = Math.max(ASCII_BOX_PX + 15, availW * 0.135);
-    const gap = 10;
-
-    const x0 = padX;
-    const x1 = x0 + col0W + gap;
-    const x2 = x1 + col1W + gap;
-    const x3 = x2 + asciiW + gap;
-    const x4 = x3 + asciiW + gap;
-    const x5 = x4 + asciiW + gap;
-    const x6 = x5 + asciiW + gap;
-    const lastW = Math.max(ASCII_BOX_PX + 15, padX + availW - (x6 + asciiW + gap));
-    const x7 = x6 + asciiW + gap;
-
-    const srcH = 58;
-    const srcGap = (availH - srcH*5) / 6;
-    const srcY = i => padY + srcGap + i*(srcH + srcGap);
-    const cy = (frac) => padY + availH * frac;
-
-    return {
-      corp:   { x: x0, y: srcY(0), w: col0W, h: srcH, title:'Corporativas',       tag:'ERP / CRM SaaS',      detail:'Salesforce, SAP',            source:true, accent:COLORS.purple },
-      web:    { x: x0, y: srcY(1), w: col0W, h: srcH, title:'Aplicações Web',     tag:'Portal / Front',      detail:'React, Angular, Transações', source:true, accent:COLORS.blue   },
-      java:   { x: x0, y: srcY(2), w: col0W, h: srcH, title:'Java Microsserviços',tag:'Spring Boot / REST',  detail:'Kafka, Eventos, gRPC',       source:true, accent:COLORS.orange },
-      batch:  { x: x0, y: srcY(3), w: col0W, h: srcH, title:'CRON / Batch',       tag:'Arquivos Legados',    detail:'CSV, XML, S3',               source:true, accent:COLORS.amber  },
-      mobile: { x: x0, y: srcY(4), w: col0W, h: srcH, title:'Mobile / IoT',       tag:'App iOS/Android',     detail:'SQLite local integrado',     source:true, accent:COLORS.green  },
-
-      gateway: { x: x1, y: cy(0.5) - 28, w: col1W, h: 56, title:'API Gateway', tag:'Load Balancer' },
-
-      oltp: {
-        x: x2, y: cy(0.5) - 84, w: asciiW, h: 168,
-        ascii: [
-          '┌─────────────────────────┐',
-          '│  SGBD Cliente-Servidor  │',
-          '│  - PostgreSQL / MySQL   │',
-          '│  - MongoDB (NoSQL Doc)  │',
-          '│  - Oracle Database      │',
-          '│  - Microsoft SQL Server │',
-          '│  - IBM DB2              │',
-          '│  - Alta Normalização    │',
-          '│  - Propriedades ACID    │',
-          '│  - Mecanismo WAL (Log)  │',
-          '└─────────────────────────┘'
-        ],
-        header:'CAMADA OPERACIONAL (OLTP)'
-      },
-
-      mq: {
-        x: x3, y: cy(0.5) - 75, w: asciiW, h: 150,
-        ascii: [
-          '┌─────────────────────────┐',
-          '│   BROKERS DE EVENTOS    │',
-          '│  - Apache Kafka         │',
-          '│  - RabbitMQ             │',
-          '│  - Apache Pulsar        │',
-          '│  - AWS SQS / SNS        │',
-          '│  - Google Pub/Sub       │',
-          '│  - Redis Streams        │',
-          '└─────────────────────────┘'
-        ],
-        header:'MENSAGERIA / STREAMING', accent:COLORS.pink
-      },
-
-      lake: {
-        x: x4, y: cy(0.5) - 90, w: asciiW, h: 180,
-        ascii: [
-          '┌─────────────────────────┐',
-          '│        DATA LAKE        │',
-          '│  (AWS S3 / Google GCS)  │',
-          '│  - Dados Brutos         │',
-          '│  - Schema-on-Read       │',
-          '│  - JSON/CSV/Logs        │',
-          '├─────────────────────────┤',
-          '│  Ferramentas Populares: │',
-          '│  - Apache Iceberg       │',
-          '│  - Delta Lake           │',
-          '│  - Apache Hudi          │',
-          '│  - Apache Paimon        │',
-          '└─────────────────────────┘'
-        ],
-        header:'CAMADA DE BIG DATA'
-      },
-
-      spark: {
-        x: x5, y: cy(0.5) - 66, w: asciiW, h: 132,
-        ascii: [
-          '┌─────────────────────────┐',
-          '│     Apache Spark        │',
-          '│  - Batch + Streaming    │',
-          '│  - Spark SQL / MLlib    │',
-          '│  - Apache Flink         │',
-          '│  - Kafka Streams        │',
-          '└─────────────────────────┘'
-        ],
-        header:'CAMADA DE PROCESSAMENTO', pulse:true, accent:COLORS.amber
-      },
-
-      databricks: {
-        x: x6, y: cy(0.5) - 90, w: asciiW, h: 180,
-        ascii: [
-          '┌─────────────────────────┐',
-          '│       DATABRICKS        │',
-          '│  (Unified Data Platform)│',
-          '│  - Delta Lake Engine    │',
-          '│  - Spark + Photon       │',
-          '│  - Unity Catalog        │',
-          '│  - Databricks SQL       │',
-          '│  - MLflow / MLOps       │',
-          '└─────────────────────────┘'
-        ],
-        header:'CAMADA DE DATA LAKEHOUSE', pulse:true, accent:COLORS.red
-      },
-
-      bi: {
-        x: x7, y: cy(0.5) - 60, w: lastW, h: 120,
-        ascii: [
-          '┌─────────────────────────┐',
-          '│   Power BI / Tableau    │',
-          '│  - Dashboards Visuais   │',
-          '│  - Métricas de Acurácia │',
-          '│  - Tomada de Decisão    │',
-          '└─────────────────────────┘'
-        ],
-        header:'BUSINESS INTELLIGENCE', pulse:true
-      }
-    };
-  }
-
-  function buildPaths(n){
-    const R = o => ({x:o.x+o.w, y:o.y+o.h/2});
-    const L = o => ({x:o.x,     y:o.y+o.h/2});
-    return [
-      [R(n.corp),   L(n.gateway), 'dashed', n.corp.accent],
-      [R(n.web),    L(n.gateway), 'dashed', n.web.accent],
-      [R(n.java),   L(n.gateway), 'dashed', n.java.accent],
-      [R(n.batch),  L(n.gateway), 'dashed', n.batch.accent],
-      [R(n.mobile), L(n.gateway), 'dashed', n.mobile.accent],
-      [R(n.gateway),  L(n.oltp),    'solid', COLORS.blue],
-      [R(n.oltp),     L(n.mq),      'solid', COLORS.pink],
-      [R(n.mq),       L(n.lake),    'solid', COLORS.pink],
-      [R(n.lake),     L(n.spark),   'solid', COLORS.blue],
-      [R(n.spark),    L(n.databricks),'solid', COLORS.blue],
-      [R(n.databricks),L(n.bi),     'solid', COLORS.red]
-    ];
-  }
-
-  let particles = [];
-  function seedParticles(paths){
-    particles = [];
-    const N = 60;
-    for(let i=0;i<N;i++){
-      particles.push({
-        pathIndex: Math.floor(Math.random()*paths.length),
-        progress: Math.random(),
-        speed: 0.10 + Math.random()*0.10,
-        size: 2 + Math.random()*2,
-        color: Math.random() > 0.4 ? COLORS.green : COLORS.blue
-      });
-    }
-  }
-
-  function pointOnCurve(p0, p1, p2, p3, t){
-    const mt = 1-t;
-    const a = mt*mt*mt, b = 3*mt*mt*t, c = 3*mt*t*t, d = t*t*t;
-    return {
-      x: a*p0.x + b*p1.x + c*p2.x + d*p3.x,
-      y: a*p0.y + b*p1.y + c*p2.y + d*p3.y
-    };
-  }
-
-  function roundRect(x,y,w,h,r){
-    if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); return; }
-    ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r);
-    ctx.closePath();
-  }
-
-  function drawCard(node, pulseT){
-    const isPulse = !!node.pulse;
-    const isSource = !!node.source;
-    const isAscii = !!node.ascii;
-    const accent = node.accent || COLORS.blue;
-    ctx.save();
-
-    if(isPulse){
-      const glow = Math.sin(pulseT)*0.4 + 0.6;
-      ctx.shadowColor = accent;
-      ctx.shadowBlur = 10 * glow;
-      ctx.strokeStyle = accent + 'AA';
-      ctx.lineWidth = 2;
-    } else if(isSource){
-      ctx.shadowColor = accent;
-      ctx.shadowBlur = 6;
-      ctx.strokeStyle = accent + '99';
-      ctx.lineWidth = 1.2;
-    } else if(isAscii){
-      ctx.shadowColor = accent;
-      ctx.shadowBlur = 6;
-      ctx.strokeStyle = accent + '80';
-      ctx.lineWidth = 1.2;
-    } else {
-      ctx.strokeStyle = COLORS.stroke;
-      ctx.lineWidth = 1;
-    }
-
-    const grad = ctx.createLinearGradient(node.x, node.y, node.x, node.y+node.h);
-    grad.addColorStop(0, COLORS.panel);
-    grad.addColorStop(1, COLORS.panel2);
-    ctx.fillStyle = grad;
-    roundRect(node.x, node.y, node.w, node.h, 8);
-    ctx.fill();
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    ctx.save();
-    roundRect(node.x, node.y, node.w, node.h, 8);
-    ctx.clip();
-    ctx.fillStyle = isSource ? accent : (isAscii ? accent : (isPulse ? 'rgba(79,160,255,.85)' : 'rgba(79,160,255,.35)'));
-    ctx.fillRect(node.x, node.y, node.w, 2.5);
-    ctx.restore();
-
-    if(isAscii && node.ascii){
-      ctx.fillStyle = accent;
-      ctx.font = '600 8.5px ui-monospace,Consolas,monospace';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText(node.header || '', node.x + 6, node.y + 6);
-
-      ctx.fillStyle = COLORS.text;
-      ctx.font = ASCII_FONT;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      let lineY = node.y + 19;
-      node.ascii.forEach(line => {
-        ctx.fillText(line, node.x + 6, lineY);
-        lineY += ASCII_LINE_H;
-      });
-    } else {
-      ctx.fillStyle = COLORS.text;
-      ctx.font = '600 10.5px "Segoe UI",system-ui,sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(node.title, node.x + node.w/2, node.y + 8, node.w - 8);
-
-      if(node.tag){
-        ctx.fillStyle = isSource ? accent : COLORS.muted;
-        ctx.font = '8.5px ui-monospace,Consolas,monospace';
-        ctx.fillText(node.tag, node.x + node.w/2, node.y + 22, node.w - 8);
-      }
-      if(node.detail){
-        ctx.fillStyle = COLORS.muted;
-        ctx.font = '8px "Segoe UI",system-ui,sans-serif';
-        ctx.fillText(node.detail, node.x + node.w/2, node.y + 36, node.w - 8);
-      }
-    }
-    ctx.restore();
-  }
-
-  function render(now){
-    const dt = Math.min((now - t0)/1000, 0.05);
-    t0 = now;
-    const pulseT = now / 400;
-
-    ctx.clearRect(0,0,W,H);
-
-    const bgGrad = ctx.createLinearGradient(0,0,0,H);
-    bgGrad.addColorStop(0, 'rgba(19,28,43,0.55)');
-    bgGrad.addColorStop(1, 'rgba(11,15,23,0.9)');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0,0,W,H);
-
-    const nodes = layout();
-    const paths = buildPaths(nodes);
-    if(particles.length === 0) seedParticles(paths);
-
-    paths.forEach(p => {
-      const [s, e, style, color] = p;
-      const midX = (s.x + e.x)/2;
-      ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.bezierCurveTo(midX, s.y, midX, e.y, e.x, e.y);
-      ctx.lineWidth = style === 'solid' ? 1.7 : 1.2;
-      if(style === 'dashed'){
-        ctx.setLineDash([5,5]);
-        ctx.strokeStyle = (color || COLORS.muted) + '80';
-      } else {
-        ctx.setLineDash([]);
-        ctx.strokeStyle = (color || COLORS.blue) + '80';
-        ctx.shadowColor = (color || COLORS.blue) + '80';
-        ctx.shadowBlur = 4;
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      ctx.setLineDash([]);
-
-      const ang = Math.atan2(e.y - s.y, e.x - s.x);
-      ctx.save();
-      ctx.translate(e.x, e.y);
-      ctx.rotate(ang);
-      ctx.fillStyle = (color || COLORS.blue) + 'CC';
-      ctx.beginPath();
-      ctx.moveTo(0,0);
-      ctx.lineTo(-7,-3.5);
-      ctx.lineTo(-7, 3.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    });
-
-    particles.forEach(p => {
-      p.progress += p.speed * dt;
-      if(p.progress >= 1){
-        p.progress = 0;
-        p.pathIndex = Math.floor(Math.random()*paths.length);
-        p.color = Math.random() > 0.4 ? COLORS.green : COLORS.blue;
-      }
-      const path = paths[p.pathIndex];
-      if(!path) return;
-      const [s, e] = path;
-      const midX = (s.x + e.x)/2;
-      const pt = pointOnCurve(s, {x:midX,y:s.y}, {x:midX,y:e.y}, e, p.progress);
-
-      ctx.save();
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = 8;
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, p.size, 0, Math.PI*2);
-      ctx.fill();
-      ctx.restore();
-    });
-
-    Object.values(nodes).forEach(n => drawCard(n, pulseT));
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(139,152,173,.35)';
-    ctx.font = '8.5px ui-monospace,Consolas,monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    const labels = ['FONTES','GATEWAY','OLTP','MENSAGERIA','DATA LAKE','PROCESSAMENTO','DATABRICKS','BI'];
-    const colsX = [
-      nodes.corp.x + nodes.corp.w/2,
-      nodes.gateway.x + nodes.gateway.w/2,
-      nodes.oltp.x + nodes.oltp.w/2,
-      nodes.mq.x + nodes.mq.w/2,
-      nodes.lake.x + nodes.lake.w/2,
-      nodes.spark.x + nodes.spark.w/2,
-      nodes.databricks.x + nodes.databricks.w/2,
-      nodes.bi.x + nodes.bi.w/2
-    ];
-    labels.forEach((lb, i) => {
-      ctx.fillText(lb, colsX[i], 4);
-    });
-    ctx.restore();
-
-    requestAnimationFrame(render);
-  }
-
-  requestAnimationFrame(render);
-})();
-</script>
 </body>
 </html>
